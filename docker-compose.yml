@@ -1,0 +1,100 @@
+services:
+  # Rik App
+  rik-app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    ports:
+      - "3124:3124"
+    volumes:
+      - ./data:/data
+    environment:
+      - DATABASE_PATH=/data/rik.db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ROOT_USER=rik
+      - MINIO_ROOT_PASSWORD=riksecret
+      - LLM_BASE_URL=http://ollama:11434/v1
+      - LLM_API_KEY=ollama
+      - LLM_MODEL=llama3.1:8b
+    depends_on:
+      - redis
+      - minio
+      - ollama
+
+  # Background Worker
+  rik-worker:
+    build:
+      context: ./app
+      dockerfile: worker/Dockerfile
+    volumes:
+      - ./data:/data
+    environment:
+      - DATABASE_PATH=/data/rik.db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ROOT_USER=rik
+      - MINIO_ROOT_PASSWORD=riksecret
+      - LLM_BASE_URL=http://ollama:11434/v1
+      - LLM_API_KEY=ollama
+      - LLM_MODEL=llama3.1:8b
+    depends_on:
+      - redis
+      - minio
+      - ollama
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
+  # MinIO (S3-compatible storage)
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    environment:
+      - MINIO_ROOT_USER=rik
+      - MINIO_ROOT_PASSWORD=riksecret
+    command: server /data --console-address ":9001"
+
+  # Stalwart Mail Server
+  stalwart:
+    image: stalwartlabs/mail-server:latest
+    ports:
+      - "25:25"
+      - "993:993"
+    volumes:
+      - stalwart-data:/opt/stalwart-mail
+      - ./config/stalwart.toml:/opt/stalwart-mail/etc/config.toml:ro
+
+  # Ollama (Local LLM)
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    # Uncomment for NVIDIA GPU passthrough:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  redis-data:
+  minio-data:
+  stalwart-data:
+  ollama-data:
