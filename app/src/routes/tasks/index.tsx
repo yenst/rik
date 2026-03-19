@@ -1,27 +1,34 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 import { getTasks, createTask, updateTask, deleteTask } from '@/server/functions/tasks'
-import { Badge } from '@/components/ui/badge'
+import type { Task } from '@/server/functions/tasks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
+import { PriorityBadge } from '@/components/tasks/priority-badge'
 
 const statusFilters = ['all', 'open', 'in_progress', 'done'] as const
+type StatusFilter = (typeof statusFilters)[number]
+
+const filterLabels: Record<StatusFilter, string> = {
+  all: 'All',
+  open: 'Open',
+  in_progress: 'In Progress',
+  done: 'Done',
+}
 
 export const Route = createFileRoute('/tasks/')({
-  loaderDeps: ({ search }) => ({ status: (search as { status?: string }).status }),
-  loader: ({ deps }) =>
-    getTasks({
-      data: { status: (deps.status || 'all') as 'all' | 'open' | 'in_progress' | 'done' },
-    }),
+  loaderDeps: ({ search }) => ({
+    status: ((search as Record<string, unknown>).status as StatusFilter) || 'all',
+  }),
+  loader: ({ deps }) => getTasks({ data: { status: deps.status } }),
   component: TasksPage,
 })
 
 function TasksPage() {
   const tasks = Route.useLoaderData()
   const router = useRouter()
-  const search = Route.useSearch() as { status?: string }
-  const status = search.status || 'all'
+  const status = Route.useLoaderDeps().status
   const [newTitle, setNewTitle] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -29,6 +36,7 @@ function TasksPage() {
     e.preventDefault()
     const title = newTitle.trim()
     if (!title) return
+
     setSubmitting(true)
     await createTask({ data: { title } })
     setNewTitle('')
@@ -72,7 +80,7 @@ function TasksPage() {
             size="sm"
             onClick={() => router.navigate({ search: { status: f } })}
           >
-            {f === 'in_progress' ? 'In Progress' : f.charAt(0).toUpperCase() + f.slice(1)}
+            {filterLabels[f]}
           </Button>
         ))}
       </div>
@@ -96,8 +104,6 @@ function TasksPage() {
     </div>
   )
 }
-
-type Task = Awaited<ReturnType<typeof getTasks>>[number]
 
 function TaskRow({
   task,
@@ -145,19 +151,5 @@ function TaskRow({
         </Button>
       </div>
     </div>
-  )
-}
-
-function PriorityBadge({ priority }: { priority: string }) {
-  const variant =
-    priority === 'high'
-      ? 'destructive'
-      : priority === 'medium'
-        ? 'secondary'
-        : 'outline'
-  return (
-    <Badge variant={variant as 'destructive' | 'secondary' | 'outline'} className="text-xs">
-      {priority}
-    </Badge>
   )
 }

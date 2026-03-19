@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 import { getTask, updateTask, deleteTask } from '@/server/functions/tasks'
+import type { TaskStatus, TaskPriority } from '@/server/functions/tasks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -23,8 +24,8 @@ function TaskDetailPage() {
   const router = useRouter()
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description || '')
-  const [priority, setPriority] = useState(task.priority)
-  const [status, setStatus] = useState(task.status)
+  const [priority, setPriority] = useState<TaskPriority>(task.priority)
+  const [status, setStatus] = useState<TaskStatus>(task.status)
   const [dueDate, setDueDate] = useState(task.dueDate || '')
   const [saving, setSaving] = useState(false)
 
@@ -42,8 +43,8 @@ function TaskDetailPage() {
         id: task.id,
         title,
         description: description || null,
-        priority: priority as 'low' | 'medium' | 'high',
-        status: status as 'open' | 'in_progress' | 'done',
+        priority,
+        status,
         dueDate: dueDate || null,
       },
     })
@@ -88,7 +89,7 @@ function TaskDetailPage() {
         <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="text-sm font-medium mb-1 block">Status</label>
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status} onValueChange={(v) => setStatus(v as TaskStatus)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -102,7 +103,7 @@ function TaskDetailPage() {
 
           <div>
             <label className="text-sm font-medium mb-1 block">Priority</label>
-            <Select value={priority} onValueChange={setPriority}>
+            <Select value={priority} onValueChange={(v) => setPriority(v as TaskPriority)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

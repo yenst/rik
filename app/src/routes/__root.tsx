@@ -64,8 +64,7 @@ function NavLink({ to, label }: { to: string; label: string }) {
   return (
     <Link
       to={to}
-      className="block px-3 py-2 rounded-md text-sm transition-colors hover:bg-muted"
-      activeProps={{ className: 'block px-3 py-2 rounded-md text-sm bg-muted font-medium' }}
+      className="block px-3 py-2 rounded-md text-sm transition-colors hover:bg-muted [&.active]:bg-muted [&.active]:font-medium"
       activeOptions={{ exact: to === '/' }}
     >
       {label}
