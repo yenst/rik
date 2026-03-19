@@ -1,6 +1,8 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { getTasks } from '@/server/functions/tasks'
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
+import { useState } from 'react'
+import { getTasks, createTask } from '@/server/functions/tasks'
 import { PriorityBadge } from '@/components/tasks/priority-badge'
+import { Input } from '@/components/ui/input'
 
 export const Route = createFileRoute('/')({
   loader: () => getTasks({ data: { status: 'open' } }),
@@ -9,10 +11,31 @@ export const Route = createFileRoute('/')({
 
 function DashboardPage() {
   const tasks = Route.useLoaderData()
+  const router = useRouter()
+  const [quickTask, setQuickTask] = useState('')
+
+  const handleQuickAdd = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const title = quickTask.trim()
+    if (!title) return
+
+    await createTask({ data: { title } })
+    setQuickTask('')
+    router.invalidate()
+  }
 
   return (
     <div className="p-6 space-y-6">
       <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+
+      <form onSubmit={handleQuickAdd}>
+        <Input
+          placeholder="Quick add task... (press enter)"
+          value={quickTask}
+          onChange={(e) => setQuickTask(e.target.value)}
+        />
+      </form>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <TasksWidget tasks={tasks} />
 

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import {
+  ClientOnly,
   createRootRoute,
   HeadContent,
   Link,
@@ -7,6 +8,7 @@ import {
   Scripts,
 } from '@tanstack/react-router'
 import globalsCss from '@/styles/globals.css?url'
+import { CommandPalette } from '@/components/command-palette'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -37,10 +39,17 @@ function RootComponent() {
             <NavLink to="/mail" label="Mail" />
             <NavLink to="/invoices" label="Invoices" />
           </nav>
+          <div className="p-3 border-t border-border">
+            <kbd className="text-xs text-muted-foreground">⌘K</kbd>
+            <span className="text-xs text-muted-foreground ml-1">Command</span>
+          </div>
         </aside>
         <main className="flex-1 overflow-auto">
           <Outlet />
         </main>
+        <ClientOnly>
+          <CommandPalette />
+        </ClientOnly>
       </div>
     </RootDocument>
   )
