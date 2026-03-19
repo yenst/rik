@@ -49,9 +49,25 @@ rik/
 
 - Use Drizzle for all database access. Schema lives in `app/src/server/db/schema.ts`.
 - Use `createServerFn` from `@tanstack/react-start` for all server-side logic. No separate API server.
+- Server function validators use `.inputValidator()` (not `.validator()`).
 - Use BullMQ for anything that runs in the background (mail processing, LLM calls, invoice extraction).
 - Components use shadcn/ui. Install new components via the shadcn CLI.
 - Environment variables go in `.env` and are accessed only in server functions or workers.
+
+## Code Style
+
+Write clean, readable TypeScript. Prioritize clarity over cleverness.
+
+- **Early returns** — guard clause first, happy path last. Don't nest business logic inside `if/else` blocks.
+- **Small functions** — each function does one thing. If a function needs a comment explaining a section, that section should be its own function.
+- **Explicit over implicit** — name things clearly, avoid abbreviations (except common ones like `id`, `db`, `fn`). A longer descriptive name beats a short cryptic one.
+- **No `any`** — use proper types. If you need a generic record, use `Record<string, unknown>`.
+- **Const by default** — use `const` everywhere. Only use `let` when reassignment is genuinely needed.
+- **Destructure at the boundary** — destructure function params and API responses at the top, then work with named values.
+- **Colocate related code** — keep server functions, types, and route components close to where they're used. Don't create barrel files or index re-exports.
+- **Error handling** — throw descriptive errors in server functions. Let TanStack handle error boundaries in the UI. Don't silently swallow errors.
+- **No dead code** — don't leave commented-out code, unused imports, or placeholder functions. Delete it.
+- **Consistent patterns** — when adding a new feature, follow the same pattern as existing features (e.g., tasks CRUD → mail CRUD should look structurally identical).
 
 ## Common Tasks
 
