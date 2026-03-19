@@ -1,10 +1,9 @@
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/libsql'
+import { createClient } from '@libsql/client'
 import * as schema from './schema'
 
-const sqlite = new Database(process.env.DATABASE_PATH || './data/rik.db')
-sqlite.pragma('journal_mode = WAL')
-sqlite.pragma('foreign_keys = ON')
-sqlite.pragma('busy_timeout = 5000')
+const client = createClient({
+  url: `file:${process.env.DATABASE_PATH || './data/rik.db'}`,
+})
 
-export const db = drizzle(sqlite, { schema })
+export const db = drizzle(client, { schema })

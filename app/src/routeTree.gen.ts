@@ -14,6 +14,8 @@ import { Route as TasksIndexRouteImport } from './routes/tasks/index'
 import { Route as MailIndexRouteImport } from './routes/mail/index'
 import { Route as InvoicesIndexRouteImport } from './routes/invoices/index'
 import { Route as TasksTaskIdRouteImport } from './routes/tasks/$taskId'
+import { Route as MailEmailIdRouteImport } from './routes/mail/$emailId'
+import { Route as ApiWebhooksMailRouteImport } from './routes/api/webhooks/mail'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,43 +42,83 @@ const TasksTaskIdRoute = TasksTaskIdRouteImport.update({
   path: '/tasks/$taskId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MailEmailIdRoute = MailEmailIdRouteImport.update({
+  id: '/mail/$emailId',
+  path: '/mail/$emailId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebhooksMailRoute = ApiWebhooksMailRouteImport.update({
+  id: '/api/webhooks/mail',
+  path: '/api/webhooks/mail',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/mail/$emailId': typeof MailEmailIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/invoices/': typeof InvoicesIndexRoute
   '/mail/': typeof MailIndexRoute
   '/tasks/': typeof TasksIndexRoute
+  '/api/webhooks/mail': typeof ApiWebhooksMailRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/mail/$emailId': typeof MailEmailIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/invoices': typeof InvoicesIndexRoute
   '/mail': typeof MailIndexRoute
   '/tasks': typeof TasksIndexRoute
+  '/api/webhooks/mail': typeof ApiWebhooksMailRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/mail/$emailId': typeof MailEmailIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/invoices/': typeof InvoicesIndexRoute
   '/mail/': typeof MailIndexRoute
   '/tasks/': typeof TasksIndexRoute
+  '/api/webhooks/mail': typeof ApiWebhooksMailRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/tasks/$taskId' | '/invoices/' | '/mail/' | '/tasks/'
+  fullPaths:
+    | '/'
+    | '/mail/$emailId'
+    | '/tasks/$taskId'
+    | '/invoices/'
+    | '/mail/'
+    | '/tasks/'
+    | '/api/webhooks/mail'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/tasks/$taskId' | '/invoices' | '/mail' | '/tasks'
-  id: '__root__' | '/' | '/tasks/$taskId' | '/invoices/' | '/mail/' | '/tasks/'
+  to:
+    | '/'
+    | '/mail/$emailId'
+    | '/tasks/$taskId'
+    | '/invoices'
+    | '/mail'
+    | '/tasks'
+    | '/api/webhooks/mail'
+  id:
+    | '__root__'
+    | '/'
+    | '/mail/$emailId'
+    | '/tasks/$taskId'
+    | '/invoices/'
+    | '/mail/'
+    | '/tasks/'
+    | '/api/webhooks/mail'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MailEmailIdRoute: typeof MailEmailIdRoute
   TasksTaskIdRoute: typeof TasksTaskIdRoute
   InvoicesIndexRoute: typeof InvoicesIndexRoute
   MailIndexRoute: typeof MailIndexRoute
   TasksIndexRoute: typeof TasksIndexRoute
+  ApiWebhooksMailRoute: typeof ApiWebhooksMailRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,15 +158,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TasksTaskIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mail/$emailId': {
+      id: '/mail/$emailId'
+      path: '/mail/$emailId'
+      fullPath: '/mail/$emailId'
+      preLoaderRoute: typeof MailEmailIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhooks/mail': {
+      id: '/api/webhooks/mail'
+      path: '/api/webhooks/mail'
+      fullPath: '/api/webhooks/mail'
+      preLoaderRoute: typeof ApiWebhooksMailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MailEmailIdRoute: MailEmailIdRoute,
   TasksTaskIdRoute: TasksTaskIdRoute,
   InvoicesIndexRoute: InvoicesIndexRoute,
   MailIndexRoute: MailIndexRoute,
   TasksIndexRoute: TasksIndexRoute,
+  ApiWebhooksMailRoute: ApiWebhooksMailRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

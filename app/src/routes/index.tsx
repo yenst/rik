@@ -1,16 +1,24 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 import { getTasks, createTask } from '@/server/functions/tasks'
+import { getEmails } from '@/server/functions/mail'
 import { PriorityBadge } from '@/components/tasks/priority-badge'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 
 export const Route = createFileRoute('/')({
-  loader: () => getTasks({ data: { status: 'open' } }),
+  loader: async () => {
+    const [tasks, emails] = await Promise.all([
+      getTasks({ data: { status: 'open' } }),
+      getEmails({ data: { classification: 'all' } }),
+    ])
+    return { tasks, emails }
+  },
   component: DashboardPage,
 })
 
 function DashboardPage() {
-  const tasks = Route.useLoaderData()
+  const { tasks, emails } = Route.useLoaderData()
   const router = useRouter()
   const [quickTask, setQuickTask] = useState('')
 
@@ -38,11 +46,7 @@ function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <TasksWidget tasks={tasks} />
-
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h3 className="font-semibold mb-2">Mail</h3>
-          <p className="text-sm text-muted-foreground">No emails yet — set up forwarding to get started.</p>
-        </div>
+        <MailWidget emails={emails} />
 
         <div className="rounded-lg border border-border bg-card p-4">
           <h3 className="font-semibold mb-2">Agenda</h3>
@@ -79,6 +83,43 @@ function TasksWidget({ tasks }: { tasks: Awaited<ReturnType<typeof getTasks>> })
           ))}
           {tasks.length > 5 && (
             <p className="text-xs text-muted-foreground">+{tasks.length - 5} more</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MailWidget({ emails }: { emails: Awaited<ReturnType<typeof getEmails>> }) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold">Mail</h3>
+        <Link to="/mail" className="text-xs text-muted-foreground hover:text-foreground">
+          View all &rarr;
+        </Link>
+      </div>
+      {emails.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No emails yet — set up forwarding to get started.</p>
+      ) : (
+        <div className="space-y-2">
+          {emails.slice(0, 5).map((email) => (
+            <Link
+              key={email.id}
+              to="/mail/$emailId"
+              params={{ emailId: email.id }}
+              className="flex items-center justify-between text-sm hover:bg-muted/50 rounded px-2 py-1 -mx-2"
+            >
+              <span className="truncate flex-1">{email.subject || '(no subject)'}</span>
+              {email.classification && (
+                <Badge variant="outline" className="text-xs ml-2 shrink-0">
+                  {email.classification}
+                </Badge>
+              )}
+            </Link>
+          ))}
+          {emails.length > 5 && (
+            <p className="text-xs text-muted-foreground">+{emails.length - 5} more</p>
           )}
         </div>
       )}
