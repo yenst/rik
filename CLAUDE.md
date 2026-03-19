@@ -19,7 +19,7 @@ Rik is a self-hosted personal assistant that runs entirely in Docker. It provide
 - **UI**: shadcn/ui + Tailwind CSS
 - **Database**: SQLite via Drizzle ORM
 - **Background Jobs**: BullMQ + Redis
-- **Mail Server**: Stalwart (receives forwarded emails)
+- **Email**: IMAP polling (works with Stalwart, Gmail, any IMAP server)
 - **Object Storage**: MinIO (attachments, PDFs)
 - **LLM**: Ollama (local, pluggable to OpenAI-compatible APIs)
 - **Infrastructure**: Docker Compose
@@ -41,7 +41,6 @@ rik/
 │   └── worker/            # BullMQ worker (separate entrypoint)
 ├── packages/
 │   └── cli/               # rik CLI — talk to Rik from terminal
-├── config/                # Service configs (Stalwart, etc.)
 └── data/                  # Docker volume mounts
 ```
 

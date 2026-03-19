@@ -40,6 +40,13 @@ services:
       - LLM_BASE_URL=http://ollama:11434/v1
       - LLM_API_KEY=ollama
       - LLM_MODEL=llama3.1:8b
+      # IMAP — point at your email provider
+      # - IMAP_HOST=imap.gmail.com
+      # - IMAP_PORT=993
+      # - IMAP_USER=rik.yensio@gmail.com
+      # - IMAP_PASS=app-password
+      # - IMAP_FOLDER=INBOX
+      # - IMAP_POLL_INTERVAL=300000
     depends_on:
       - redis
       - minio
@@ -67,15 +74,6 @@ services:
       - MINIO_ROOT_PASSWORD=riksecret
     command: server /data --console-address ":9001"
 
-  # Stalwart Mail Server
-  stalwart:
-    image: stalwartlabs/mail-server:latest
-    ports:
-      - "25:25"
-      - "993:993"
-    volumes:
-      - stalwart-data:/opt/stalwart-mail
-      - ./config/stalwart.toml:/opt/stalwart-mail/etc/config.toml:ro
 
   # Ollama (Local LLM)
   ollama:
@@ -96,5 +94,4 @@ services:
 volumes:
   redis-data:
   minio-data:
-  stalwart-data:
   ollama-data:

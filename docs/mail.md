@@ -1,80 +1,132 @@
-# Email System — Stalwart Mail Server
+# Email System — IMAP Polling
 
 ## Concept
 
-Rik does **not** connect to your real mailbox. Instead, you set up forwarding rules in your existing email provider (Gmail, Outlook, etc.) to forward copies of emails to Rik's own mail server. This means:
+Rik polls an IMAP mailbox on an interval and processes new emails. You choose what goes into that mailbox — either by forwarding from your real inbox, or by pointing Rik at a specific folder/label.
 
-- Rik never has your email credentials
-- Rik only sees what you explicitly forward
-- You can be selective — forward everything, or only specific labels/filters
-- If Rik goes down, your real email is unaffected
+## Two Setups
 
-## Stalwart Mail Server
+### Option A: Self-hosted mailbox (recommended)
 
-Stalwart is a lightweight, Rust-based mail server that supports SMTP, IMAP, and JMAP. We use it as a local receiver.
+Run Stalwart (included in docker-compose) or on a separate machine like a Raspberry Pi. You get your own mail server at `rik@yourdomain.com`.
 
-### What it does
-
-1. Receives incoming SMTP email on port 25
-2. Stores the email
-3. Fires a webhook to the Rik app notifying it of the new message
-4. Optionally serves email via IMAP (port 993) if you want to connect a mail client
-
-### Configuration
-
-Stalwart config lives in `config/stalwart.toml`. Key settings:
-
-```toml
-[server]
-hostname = "rik.local"
-
-[server.listener.smtp]
-bind = ["0.0.0.0:25"]
-protocol = "smtp"
-
-[server.listener.imap]
-bind = ["0.0.0.0:993"]
-protocol = "imap"
-
-# Webhook on new mail
-[webhook.new-mail]
-url = "http://rik-app:3000/api/webhooks/mail"
-events = ["message.received"]
+```
+Your real mailbox → forward rules → rik@yourdomain.com → Stalwart → Rik polls via IMAP
 ```
 
-### DNS / Forwarding Setup
+- Full containment — Rik never touches your real mailbox
+- You control exactly what gets forwarded
+- No third-party dependencies
+- Requires a domain with MX records pointing at Stalwart
 
-For local-only use (forwarding from Gmail/Outlook), you need the Stalwart SMTP port accessible. Options:
+### Option B: External IMAP provider
 
-1. **Port forwarding on your router** — forward port 25 to your Docker host. Then set your domain's MX record to your public IP.
-2. **Cloudflare Tunnel** — expose Stalwart's SMTP port via a tunnel. No open ports needed.
-3. **Relay through a cheap VPS** — run a tiny SMTP relay on a VPS that forwards to your local Stalwart.
-4. **Local network only** — if you just want to test, send emails directly to `localhost:25`.
+Point Rik at any IMAP mailbox — Gmail, Outlook, Migadu, etc. Create a dedicated account or use a label/folder.
 
-The simplest production setup is option 2 (Cloudflare Tunnel) since it avoids exposing ports.
+```
+Your real mailbox → forward rules → rik.assistant@gmail.com → Rik polls via IMAP
+```
 
-### Email Domain
+- No infrastructure to manage
+- Works with any IMAP provider
+- Free with a dedicated Gmail/Outlook account
 
-You'll need a domain (or subdomain) for receiving email, e.g., `rik.yourdomain.com`. Set the MX record to point to wherever Stalwart is accessible.
+## How It Works
 
-Forwarding rule in Gmail: `Filters → Forward to rik@rik.yourdomain.com`
+```
+IMAP mailbox (Stalwart, Gmail, etc.)
+  │
+  │  IMAP connection (poll every N minutes)
+  ▼
+Worker: sync-mail job (repeating)
+  │
+  ├── Connect to IMAP server
+  ├── Fetch unseen messages from configured folder
+  ├── Skip already-processed emails (by message ID)
+  ├── Enqueue each new email as a process-mail job
+  └── Mark as seen in IMAP
+        │
+        ▼
+Worker: process-mail job
+  ├── Parse email (from, to, subject, body, attachments)
+  ├── Store attachments → MinIO
+  ├── Store email metadata → SQLite
+  ├── Classify via LLM (invoice, actionable, newsletter, etc.)
+  └── If invoice → enqueue extract-invoice job
+```
 
-## Processing Pipeline
+## Configuration
 
-When Stalwart receives an email:
+### Stalwart (self-hosted, default in docker-compose)
 
-1. Stalwart stores the raw email and fires the webhook
-2. The webhook hits `POST /api/webhooks/mail` on the Rik app
-3. The server function validates the webhook and enqueues a `process-mail` BullMQ job
-4. The worker picks up the job and:
-   - Parses the raw email (headers, body, attachments)
-   - Stores attachments in MinIO
-   - Stores email metadata in SQLite
-   - Classifies the email via LLM
-   - Triggers follow-up jobs (e.g., invoice extraction)
+Stalwart is included in `docker-compose.yml` and configured by default. The worker connects to it at `stalwart:993`.
+
+To use it with your domain:
+1. Point your domain's MX record at the machine running Stalwart
+2. Set up the `rik@yourdomain.com` account in Stalwart's admin panel
+3. Update the IMAP env vars if you changed the credentials
+
+For a Raspberry Pi setup, run Stalwart natively on the Pi and point `IMAP_HOST` at the Pi's IP.
+
+```env
+IMAP_HOST=stalwart           # or your Pi's IP
+IMAP_PORT=993
+IMAP_USER=rik@yourdomain.com
+IMAP_PASS=your-password
+IMAP_FOLDER=INBOX
+IMAP_POLL_INTERVAL=300000    # 5 minutes
+```
+
+### Gmail
+
+1. Create a dedicated Gmail account (e.g. `rik.assistant@gmail.com`)
+2. Enable IMAP in Gmail settings
+3. Create an App Password (Google Account → Security → App Passwords)
+
+```env
+IMAP_HOST=imap.gmail.com
+IMAP_PORT=993
+IMAP_USER=rik.assistant@gmail.com
+IMAP_PASS=your-16-char-app-password
+IMAP_FOLDER=INBOX
+IMAP_POLL_INTERVAL=300000
+```
+
+### Outlook
+
+```env
+IMAP_HOST=outlook.office365.com
+IMAP_PORT=993
+IMAP_USER=rik@outlook.com
+IMAP_PASS=your-password
+IMAP_FOLDER=INBOX
+```
+
+## Polling Behavior
+
+- The `sync-mail` worker job runs on a repeating schedule (default every 5 minutes)
+- Fetches only **unseen** messages from the configured folder
+- Deduplicates by `messageId` against the database
+- Marks fetched emails as `\Seen` in IMAP
+- Silently skips if IMAP credentials aren't configured
+
+## Manual Ingestion
+
+For testing or one-off imports, POST raw emails directly:
+
+```bash
+curl -s -X POST http://localhost:3124/api/webhooks/mail \
+  -H "Content-Type: text/plain" \
+  -d 'From: test@example.com
+To: rik@local
+Subject: Test email
+Content-Type: text/plain
+
+This is a test email body.'
+```
 
 ## Libraries
 
-- **Email parsing**: Use `mailparser` (Node.js) to parse raw RFC 2822 emails
-- **MIME handling**: `mailparser` handles multipart MIME, attachments, inline images
-- **HTML to text**: Use `html-to-text` for generating plain text previews from HTML emails
+- **IMAP client**: `imapflow` — modern, promise-based IMAP client
+- **Email parsing**: `mailparser` — parses raw RFC 2822 emails
+- **HTML to text**: `html-to-text` — plain text previews from HTML emails
