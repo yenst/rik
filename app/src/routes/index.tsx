@@ -5,6 +5,7 @@ import type { Task } from '@/server/functions/tasks'
 import { getEmails, markAsRead } from '@/server/functions/mail'
 import type { Email } from '@/server/functions/mail'
 import { getInvoices } from '@/server/functions/invoices'
+import type { Invoice } from '@/server/functions/invoices'
 import { getUpcomingEvents } from '@/server/functions/agenda'
 import type { AgendaEvent } from '@/server/functions/agenda'
 import { PriorityBadge } from '@/components/tasks/priority-badge'
@@ -12,62 +13,65 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
+import { RikAvatar } from '@/components/rik-avatar'
+import { HugeiconsIcon } from '@hugeicons/react'
+import { Task01Icon, CheckListIcon, Layers01Icon } from '@hugeicons/core-free-icons'
+import { InboxUnreadIcon, Mail01Icon, MailOpen01Icon } from '@hugeicons/core-free-icons'
 import { timeAgo } from '@/lib/time'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
-    const [openTasks, emails, pendingInvoices, events] = await Promise.all([
+    const [openTasks, doneTasks, emails, pendingInvoices, events] = await Promise.all([
       getTasks({ data: { status: 'open' } }),
+      getTasks({ data: { status: 'done' } }),
       getEmails({ data: { classification: 'all' } }),
       getInvoices({ data: { status: 'pending' } }),
       getUpcomingEvents({ data: { days: 90 } }),
     ])
-    return { openTasks, emails, pendingInvoices, events }
+    return { openTasks, doneTasks, emails, pendingInvoices, events }
   },
   component: DashboardPage,
 })
 
 function DashboardPage() {
-  const { openTasks, emails, pendingInvoices, events } = Route.useLoaderData()
+  const { openTasks, doneTasks, emails, pendingInvoices, events } = Route.useLoaderData()
   const unreadEmails = emails.filter(e => !e.isRead)
-
   const focusText = buildFocusText(openTasks, unreadEmails, pendingInvoices, events)
 
   return (
-    <div className="p-6 space-y-5">
-      {/* Top: Avatar + AI focus */}
-      <div className="flex items-center gap-4">
-        {/* Bobblehead placeholder */}
-        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary/40 to-primary/10 border-2 border-primary/20 flex items-center justify-center shrink-0">
-          <span className="text-xl font-bold font-mono text-primary">R</span>
-        </div>
+    <div className="p-4 h-[calc(100vh-2rem)] flex flex-col gap-4">
+      {/* Avatar + AI focus */}
+      <div className="rounded-lg border border-border bg-card p-4 flex items-center gap-4 shrink-0">
+        <RikAvatar />
         <div className="flex-1">
-          {focusText && (
-            <p className="text-sm">{focusText}</p>
-          )}
+          <p className="text-sm font-medium">Rik</p>
+          {focusText && <p className="text-xs text-muted-foreground mt-1">{focusText}</p>}
         </div>
       </div>
 
-      {/* Invoice alert */}
-      {pendingInvoices.length > 0 && (
-        <Link
-          to="/invoices"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-chart-2/20 bg-chart-2/5 text-sm hover:bg-chart-2/10 transition-colors"
-        >
-          <span className="font-medium">
-            {pendingInvoices.length} unpaid invoice{pendingInvoices.length > 1 ? 's' : ''}
-          </span>
-          <span className="text-muted-foreground font-mono">
-            {(pendingInvoices.reduce((s, i) => s + (i.amount || 0), 0) / 100).toFixed(2)} EUR
-          </span>
-        </Link>
-      )}
+      {/* Cards grid — fills remaining height */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 flex-1 min-h-0">
+        {/* Tasks */}
+        <div className="min-h-0 overflow-hidden">
+          <TasksCard openTasks={openTasks} doneTasks={doneTasks} />
+        </div>
 
-      {/* Columns: tasks, mail, events */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <TasksCard tasks={openTasks} />
-        <UnreadMailCard emails={unreadEmails} />
-        <ComingUpCard events={events} />
+        {/* Mail + Events stacked */}
+        <div className="flex flex-col gap-4 min-h-0">
+          <div className="shrink-0">
+            <MailCard emails={emails} />
+          </div>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <ComingUpCard events={events} />
+          </div>
+        </div>
+
+        {/* Invoices */}
+        {pendingInvoices.length > 0 && (
+          <div className="min-h-0 overflow-hidden">
+            <InvoicesCard invoices={pendingInvoices} />
+          </div>
+        )}
       </div>
     </div>
   )
@@ -78,7 +82,7 @@ function DashboardPage() {
 function buildFocusText(
   tasks: Task[],
   unread: Email[],
-  invoices: Awaited<ReturnType<typeof getInvoices>>,
+  invoices: Invoice[],
   events: AgendaEvent[],
 ): string | null {
   const now = new Date()
@@ -94,26 +98,29 @@ function buildFocusText(
   }
 
   const overdue = tasks.filter(t => t.dueDate && new Date(t.dueDate) < now)
-  if (overdue.length > 0) return `${overdue.length} overdue task${overdue.length > 1 ? 's' : ''}: ${overdue.map(t => t.title).join(', ')}`
+  if (overdue.length > 0) return `${overdue.length} overdue task${overdue.length > 1 ? 's' : ''}`
 
-  if (invoices.length > 0) {
-    const total = (invoices.reduce((s, i) => s + (i.amount || 0), 0) / 100).toFixed(2)
-    return `${invoices.length} invoice${invoices.length > 1 ? 's' : ''} pending — ${total} EUR`
-  }
+  if (unread.length > 0) return `${unread.length} unread email${unread.length > 1 ? 's' : ''} waiting`
 
-  if (unread.length > 0) return `${unread.length} unread email${unread.length > 1 ? 's' : ''}`
+  if (tasks.length === 0 && invoices.length === 0) return 'All clear — nothing needs your attention.'
 
-  if (tasks.length === 0) return 'All clear — nothing needs your attention.'
-
-  return `${tasks.length} open task${tasks.length > 1 ? 's' : ''} to work through.`
+  return `${tasks.length} open task${tasks.length > 1 ? 's' : ''}`
 }
 
 /* ── Tasks ──────────────────────────────────────────── */
 
-function TasksCard({ tasks }: { tasks: Task[] }) {
+type TaskFilter = 'open' | 'done' | 'all'
+
+function TasksCard({ openTasks, doneTasks }: { openTasks: Task[]; doneTasks: Task[] }) {
   const router = useRouter()
+  const [filter, setFilter] = useState<TaskFilter>('open')
   const [newTitle, setNewTitle] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  const allTasks = [...openTasks, ...doneTasks]
+  const tasks = filter === 'open' ? openTasks : filter === 'done' ? doneTasks : allTasks
+
+  const filterLabel = filter === 'open' ? 'open' : filter === 'done' ? 'completed' : 'tasks'
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,66 +133,97 @@ function TasksCard({ tasks }: { tasks: Task[] }) {
     router.invalidate()
   }
 
-  const handleToggle = async (id: string) => {
-    await updateTask({ data: { id, status: 'done' } })
+  const handleToggle = async (task: Task) => {
+    const newStatus = task.status === 'done' ? 'open' : 'done'
+    await updateTask({ data: { id: task.id, status: newStatus } })
     router.invalidate()
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="rounded-lg border border-border bg-card h-full flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <h3 className="text-sm font-medium">{tasks.length} open tasks</h3>
-        <Link to="/tasks" className="text-xs text-muted-foreground hover:text-foreground">all tasks &rarr;</Link>
+        <h3 className="text-sm font-medium">{tasks.length} {filterLabel}</h3>
+        <div className="flex items-center gap-1">
+          <FilterIcon active={filter === 'open'} icon={Task01Icon} title="Open" onClick={() => setFilter('open')} />
+          <FilterIcon active={filter === 'done'} icon={CheckListIcon} title="Completed" onClick={() => setFilter('done')} />
+          <FilterIcon active={filter === 'all'} icon={Layers01Icon} title="All" onClick={() => setFilter('all')} />
+          <Link to="/tasks" className="text-xs text-muted-foreground hover:text-foreground ml-1">all &rarr;</Link>
+        </div>
       </div>
-      <form onSubmit={handleCreate} className="flex gap-2 px-4 py-2.5 border-b border-border">
-        <Input placeholder="Add a task..." value={newTitle} onChange={(e) => setNewTitle(e.target.value)} disabled={submitting} className="h-8 text-sm" />
-        <Button type="submit" disabled={submitting || !newTitle.trim()} size="sm" className="h-8">Add</Button>
-      </form>
+      {filter !== 'done' && (
+        <form onSubmit={handleCreate} className="flex gap-2 px-4 py-2.5 border-b border-border">
+          <Input placeholder="Add a task..." value={newTitle} onChange={(e) => setNewTitle(e.target.value)} disabled={submitting} className="h-8 text-sm" />
+          <Button type="submit" disabled={submitting || !newTitle.trim()} size="sm" className="h-8">Add</Button>
+        </form>
+      )}
       {tasks.length === 0 ? (
-        <p className="text-sm text-muted-foreground px-4 py-6 text-center">All clear.</p>
+        <p className="text-sm text-muted-foreground px-4 py-6 text-center flex-1 flex items-center justify-center">
+          {filter === 'done' ? 'No completed tasks.' : 'All clear.'}
+        </p>
       ) : (
-        <div className="divide-y divide-border">
-          {tasks.slice(0, 8).map(task => (
-            <div key={task.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
-              <Checkbox checked={false} onCheckedChange={() => handleToggle(task.id)} />
-              <span className="flex-1 text-sm truncate">{task.title}</span>
-              <PriorityBadge priority={task.priority} />
-            </div>
-          ))}
-          {tasks.length > 8 && <div className="px-4 py-2 text-xs text-muted-foreground">+{tasks.length - 8} more</div>}
+        <div className="divide-y divide-border flex-1 overflow-y-auto">
+          {tasks.slice(0, 10).map(task => {
+            const isDone = task.status === 'done'
+            return (
+              <div key={task.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
+                <Checkbox checked={isDone} onCheckedChange={() => handleToggle(task)} />
+                <span className={`flex-1 text-sm truncate ${isDone ? 'line-through text-muted-foreground' : ''}`}>{task.title}</span>
+                <PriorityBadge priority={task.priority} />
+              </div>
+            )
+          })}
+          {tasks.length > 10 && <div className="px-4 py-2 text-xs text-muted-foreground">+{tasks.length - 10} more</div>}
         </div>
       )}
     </div>
   )
 }
 
-/* ── Unread Mail ────────────────────────────────────── */
+/* ── Mail ───────────────────────────────────────────── */
 
-function UnreadMailCard({ emails }: { emails: Email[] }) {
+type MailFilter = 'unread' | 'read' | 'all'
+
+function MailCard({ emails }: { emails: Email[] }) {
+  const [filter, setFilter] = useState<MailFilter>('unread')
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const router = useRouter()
+  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+
+  const isEmailRead = (e: Email) => e.isRead || readIds.has(e.id)
+  const unread = emails.filter(e => !isEmailRead(e))
+  const read = emails.filter(e => isEmailRead(e))
+  const filtered = filter === 'unread' ? unread : filter === 'read' ? read : emails
+  const displayEmails = filtered.slice(0, 5)
+  const filterLabel = filter === 'unread' ? `${unread.length} unread` : filter === 'read' ? `${read.length} read` : `${emails.length} emails`
 
   const handleClick = async (email: Email) => {
     if (expandedId === email.id) { setExpandedId(null); return }
-    if (!email.isRead) {
-      await markAsRead({ data: { id: email.id, isRead: true } })
-      router.invalidate()
+    if (!isEmailRead(email)) {
+      setReadIds(prev => new Set(prev).add(email.id))
+      markAsRead({ data: { id: email.id, isRead: true } })
     }
     setExpandedId(email.id)
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="rounded-lg border border-border bg-card h-full flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <h3 className="text-sm font-medium">{emails.length} unread</h3>
-        <Link to="/mail" className="text-xs text-muted-foreground hover:text-foreground">inbox &rarr;</Link>
+        <h3 className="text-sm font-medium">{filterLabel}</h3>
+        <div className="flex items-center gap-1">
+          <FilterIcon active={filter === 'unread'} icon={InboxUnreadIcon} title="Unread" onClick={() => { setFilter('unread'); setExpandedId(null) }} />
+          <FilterIcon active={filter === 'read'} icon={MailOpen01Icon} title="Read" onClick={() => { setFilter('read'); setExpandedId(null) }} />
+          <FilterIcon active={filter === 'all'} icon={Layers01Icon} title="All" onClick={() => { setFilter('all'); setExpandedId(null) }} />
+          <Link to="/mail" className="text-xs text-muted-foreground hover:text-foreground ml-1">inbox &rarr;</Link>
+        </div>
       </div>
-      {emails.length === 0 ? (
-        <p className="text-sm text-muted-foreground px-4 py-6 text-center">All caught up.</p>
+      {displayEmails.length === 0 ? (
+        <p className="text-sm text-muted-foreground px-4 py-4 text-center">
+          {filter === 'unread' ? 'All caught up.' : filter === 'read' ? 'No read emails.' : 'No emails.'}
+        </p>
       ) : (
         <div className="divide-y divide-border">
-          {emails.slice(0, 4).map(email => {
+          {displayEmails.map(email => {
             const isExpanded = expandedId === email.id
+            const isRead = email.isRead || readIds.has(email.id)
             const senderName = email.from.split('<')[0]?.trim() || email.from
             const senderInitial = senderName.charAt(0).toUpperCase()
             return (
@@ -194,12 +232,12 @@ function UnreadMailCard({ emails }: { emails: Email[] }) {
                   className={`w-full flex items-start gap-3 px-4 py-2.5 text-left hover:bg-muted/30 transition-colors ${isExpanded ? 'bg-muted/20' : ''}`}
                   onClick={() => handleClick(email)}
                 >
-                  <div className="w-7 h-7 rounded-full bg-primary/80 text-primary-foreground flex items-center justify-center text-xs font-medium shrink-0 mt-0.5">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0 mt-0.5 ${!isRead ? 'bg-primary/80 text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
                     {senderInitial}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium truncate">{senderName}</span>
+                      <span className={`text-sm truncate ${!isRead ? 'font-medium' : 'text-muted-foreground'}`}>{senderName}</span>
                       <span className="text-[10px] text-muted-foreground font-mono ml-auto shrink-0">{timeAgo(email.receivedAt)}</span>
                     </div>
                     <p className="text-xs text-muted-foreground truncate">{email.subject}</p>
@@ -228,15 +266,15 @@ function UnreadMailCard({ emails }: { emails: Email[] }) {
 
 function ComingUpCard({ events }: { events: AgendaEvent[] }) {
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="rounded-lg border border-border bg-card h-full flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <h3 className="text-sm font-medium">Coming up</h3>
         <Link to="/agenda" className="text-xs text-muted-foreground hover:text-foreground">agenda &rarr;</Link>
       </div>
       {events.length === 0 ? (
-        <p className="text-sm text-muted-foreground px-4 py-6 text-center">Nothing scheduled.</p>
+        <p className="text-sm text-muted-foreground px-4 py-4 text-center flex-1 flex items-center justify-center">Nothing scheduled.</p>
       ) : (
-        <div className="divide-y divide-border">
+        <div className="divide-y divide-border flex-1">
           {events.slice(0, 5).map(event => (
             <div key={event.id} className="flex items-center gap-3 px-4 py-2.5">
               <span className="font-mono text-xs text-muted-foreground w-14 shrink-0">
@@ -248,5 +286,53 @@ function ComingUpCard({ events }: { events: AgendaEvent[] }) {
         </div>
       )}
     </div>
+  )
+}
+
+/* ── Invoices ───────────────────────────────────────── */
+
+function InvoicesCard({ invoices }: { invoices: Invoice[] }) {
+  const total = invoices.reduce((s, i) => s + (i.amount || 0), 0)
+
+  return (
+    <div className="rounded-lg border border-border bg-card h-full flex flex-col">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <h3 className="text-sm font-medium">{invoices.length} pending</h3>
+        <Link to="/invoices" className="text-xs text-muted-foreground hover:text-foreground">invoices &rarr;</Link>
+      </div>
+      <div className="divide-y divide-border">
+        {invoices.slice(0, 4).map(inv => (
+          <Link
+            key={inv.id}
+            to="/invoices/$invoiceId"
+            params={{ invoiceId: inv.id }}
+            className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 transition-colors"
+          >
+            <span className="text-sm truncate">{inv.vendor || 'Unknown'}</span>
+            <span className="text-sm font-mono text-muted-foreground">
+              {inv.amount != null ? `${(inv.amount / 100).toFixed(2)}` : '—'} {inv.currency || ''}
+            </span>
+          </Link>
+        ))}
+      </div>
+      <div className="px-4 py-2.5 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+        <span>Total pending</span>
+        <span className="font-mono font-medium text-foreground">{(total / 100).toFixed(2)} EUR</span>
+      </div>
+    </div>
+  )
+}
+
+/* ── Shared ─────────────────────────────────────────── */
+
+function FilterIcon({ active, icon, title, onClick }: { active: boolean; icon: unknown; title: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`p-1 rounded transition-colors ${active ? 'text-foreground bg-muted' : 'text-muted-foreground hover:text-foreground'}`}
+      title={title}
+    >
+      <HugeiconsIcon icon={icon as never} size={14} />
+    </button>
   )
 }
