@@ -17,6 +17,7 @@ import { Route as TasksTaskIdRouteImport } from './routes/tasks/$taskId'
 import { Route as MailEmailIdRouteImport } from './routes/mail/$emailId'
 import { Route as InvoicesInvoiceIdRouteImport } from './routes/invoices/$invoiceId'
 import { Route as ApiReprocessRouteImport } from './routes/api/reprocess'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiWebhooksMailRouteImport } from './routes/api/webhooks/mail'
 
 const IndexRoute = IndexRouteImport.update({
@@ -59,6 +60,11 @@ const ApiReprocessRoute = ApiReprocessRouteImport.update({
   path: '/api/reprocess',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebhooksMailRoute = ApiWebhooksMailRouteImport.update({
   id: '/api/webhooks/mail',
   path: '/api/webhooks/mail',
@@ -67,6 +73,7 @@ const ApiWebhooksMailRoute = ApiWebhooksMailRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/chat': typeof ApiChatRoute
   '/api/reprocess': typeof ApiReprocessRoute
   '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
   '/mail/$emailId': typeof MailEmailIdRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/chat': typeof ApiChatRoute
   '/api/reprocess': typeof ApiReprocessRoute
   '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
   '/mail/$emailId': typeof MailEmailIdRoute
@@ -90,6 +98,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/chat': typeof ApiChatRoute
   '/api/reprocess': typeof ApiReprocessRoute
   '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
   '/mail/$emailId': typeof MailEmailIdRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/api/chat'
     | '/api/reprocess'
     | '/invoices/$invoiceId'
     | '/mail/$emailId'
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/api/chat'
     | '/api/reprocess'
     | '/invoices/$invoiceId'
     | '/mail/$emailId'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/api/chat'
     | '/api/reprocess'
     | '/invoices/$invoiceId'
     | '/mail/$emailId'
@@ -137,6 +149,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiChatRoute: typeof ApiChatRoute
   ApiReprocessRoute: typeof ApiReprocessRoute
   InvoicesInvoiceIdRoute: typeof InvoicesInvoiceIdRoute
   MailEmailIdRoute: typeof MailEmailIdRoute
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiReprocessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/mail': {
       id: '/api/webhooks/mail'
       path: '/api/webhooks/mail'
@@ -217,6 +237,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiChatRoute: ApiChatRoute,
   ApiReprocessRoute: ApiReprocessRoute,
   InvoicesInvoiceIdRoute: InvoicesInvoiceIdRoute,
   MailEmailIdRoute: MailEmailIdRoute,

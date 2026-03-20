@@ -10,6 +10,7 @@
     "infra:stop": "docker compose down",
     "db:generate": "bun run --cwd app db:generate",
     "db:migrate": "bun run --cwd app db:migrate",
-    "db:studio": "bun run --cwd app db:studio"
+    "db:studio": "bun run --cwd app db:studio",
+    "rik": "bun run packages/cli/src/index.ts"
   }
 }

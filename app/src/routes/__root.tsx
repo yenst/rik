@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-router'
 import globalsCss from '@/styles/globals.css?url'
 import { CommandPalette } from '@/components/command-palette'
+import { ChatPanel } from '@/components/chat-panel'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -49,6 +50,7 @@ function RootComponent() {
         </main>
         <ClientOnly>
           <CommandPalette />
+          <ChatPanel />
         </ClientOnly>
       </div>
     </RootDocument>

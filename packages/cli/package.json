@@ -1,0 +1,12 @@
+{
+  "name": "rik-cli",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "rik": "./bin/rik"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts"
+  }
+}
