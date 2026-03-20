@@ -53,6 +53,7 @@
     "drizzle-orm": "^0.45.1",
     "html-to-text": "^9.0.5",
     "imapflow": "^1.2.15",
+    "lottie-react": "^2.4.1",
     "lucide-react": "^0.577.0",
     "mailparser": "^3.9.4",
     "nanoid": "^5.1.7",

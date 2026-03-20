@@ -41,8 +41,10 @@ function DashboardPage() {
   return (
     <div className="p-4 h-[calc(100vh-2rem)] flex flex-col gap-4">
       {/* Avatar + AI focus */}
-      <div className="rounded-lg border border-border bg-card p-4 flex items-center gap-4 shrink-0">
-        <RikAvatar />
+      <div className="rounded-lg border border-border bg-card p-5 flex items-center gap-5 shrink-0">
+        <div className="w-40 h-40 shrink-0">
+          <RikAvatar />
+        </div>
         <div className="flex-1">
           <p className="text-sm font-medium">Rik</p>
           {focusText && <p className="text-xs text-muted-foreground mt-1">{focusText}</p>}
