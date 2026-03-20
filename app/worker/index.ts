@@ -23,15 +23,24 @@ for (const [name, worker] of Object.entries(workers)) {
 }
 
 const syncMailQueue = new Queue('sync-mail', { connection })
+const agendaQueue = new Queue('agenda', { connection })
 
 async function scheduleRepeatingJobs() {
-  const pollInterval = parseInt(process.env.IMAP_POLL_INTERVAL || '300000')
+  const mailPollInterval = parseInt(process.env.IMAP_POLL_INTERVAL || '300000')
   await syncMailQueue.upsertJobScheduler(
     'sync-mail-poll',
-    { every: pollInterval },
+    { every: mailPollInterval },
     { data: {} },
   )
-  console.log(`Rik workers started`)
+
+  const agendaPollInterval = parseInt(process.env.GCAL_POLL_INTERVAL || '900000') // 15 min
+  await agendaQueue.upsertJobScheduler(
+    'sync-agenda-poll',
+    { every: agendaPollInterval },
+    { data: {} },
+  )
+
+  console.log('Rik workers started')
 }
 
 scheduleRepeatingJobs().catch(console.error)

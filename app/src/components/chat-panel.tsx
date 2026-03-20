@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input'
 interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
-  actions?: Array<{ tool: string; args: unknown }>
 }
 
 export function ChatPanel() {
@@ -43,7 +42,6 @@ export function ChatPanel() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: data.reply,
-        actions: data.actions,
       }])
 
       // Invalidate router to refresh data if tools modified anything
@@ -123,15 +121,6 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           : 'bg-muted text-foreground'
       }`}>
         <p className="whitespace-pre-wrap">{message.content}</p>
-        {message.actions && message.actions.length > 0 && (
-          <div className="mt-2 space-y-1">
-            {message.actions.map((action, i) => (
-              <div key={i} className="text-xs opacity-70 border-t border-current/20 pt-1">
-                {action.tool}: {JSON.stringify(action.args)}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )

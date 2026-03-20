@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TasksIndexRouteImport } from './routes/tasks/index'
 import { Route as MailIndexRouteImport } from './routes/mail/index'
 import { Route as InvoicesIndexRouteImport } from './routes/invoices/index'
+import { Route as AgendaIndexRouteImport } from './routes/agenda/index'
 import { Route as TasksTaskIdRouteImport } from './routes/tasks/$taskId'
 import { Route as MailEmailIdRouteImport } from './routes/mail/$emailId'
 import { Route as InvoicesInvoiceIdRouteImport } from './routes/invoices/$invoiceId'
@@ -38,6 +39,11 @@ const MailIndexRoute = MailIndexRouteImport.update({
 const InvoicesIndexRoute = InvoicesIndexRouteImport.update({
   id: '/invoices/',
   path: '/invoices/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgendaIndexRoute = AgendaIndexRouteImport.update({
+  id: '/agenda/',
+  path: '/agenda/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TasksTaskIdRoute = TasksTaskIdRouteImport.update({
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
   '/mail/$emailId': typeof MailEmailIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
+  '/agenda/': typeof AgendaIndexRoute
   '/invoices/': typeof InvoicesIndexRoute
   '/mail/': typeof MailIndexRoute
   '/tasks/': typeof TasksIndexRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
   '/mail/$emailId': typeof MailEmailIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
+  '/agenda': typeof AgendaIndexRoute
   '/invoices': typeof InvoicesIndexRoute
   '/mail': typeof MailIndexRoute
   '/tasks': typeof TasksIndexRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
   '/mail/$emailId': typeof MailEmailIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
+  '/agenda/': typeof AgendaIndexRoute
   '/invoices/': typeof InvoicesIndexRoute
   '/mail/': typeof MailIndexRoute
   '/tasks/': typeof TasksIndexRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/invoices/$invoiceId'
     | '/mail/$emailId'
     | '/tasks/$taskId'
+    | '/agenda/'
     | '/invoices/'
     | '/mail/'
     | '/tasks/'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/invoices/$invoiceId'
     | '/mail/$emailId'
     | '/tasks/$taskId'
+    | '/agenda'
     | '/invoices'
     | '/mail'
     | '/tasks'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/invoices/$invoiceId'
     | '/mail/$emailId'
     | '/tasks/$taskId'
+    | '/agenda/'
     | '/invoices/'
     | '/mail/'
     | '/tasks/'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   InvoicesInvoiceIdRoute: typeof InvoicesInvoiceIdRoute
   MailEmailIdRoute: typeof MailEmailIdRoute
   TasksTaskIdRoute: typeof TasksTaskIdRoute
+  AgendaIndexRoute: typeof AgendaIndexRoute
   InvoicesIndexRoute: typeof InvoicesIndexRoute
   MailIndexRoute: typeof MailIndexRoute
   TasksIndexRoute: typeof TasksIndexRoute
@@ -188,6 +201,13 @@ declare module '@tanstack/react-router' {
       path: '/invoices'
       fullPath: '/invoices/'
       preLoaderRoute: typeof InvoicesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agenda/': {
+      id: '/agenda/'
+      path: '/agenda'
+      fullPath: '/agenda/'
+      preLoaderRoute: typeof AgendaIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tasks/$taskId': {
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   InvoicesInvoiceIdRoute: InvoicesInvoiceIdRoute,
   MailEmailIdRoute: MailEmailIdRoute,
   TasksTaskIdRoute: TasksTaskIdRoute,
+  AgendaIndexRoute: AgendaIndexRoute,
   InvoicesIndexRoute: InvoicesIndexRoute,
   MailIndexRoute: MailIndexRoute,
   TasksIndexRoute: TasksIndexRoute,

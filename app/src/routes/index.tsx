@@ -2,23 +2,25 @@ import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 import { getTasks, createTask } from '@/server/functions/tasks'
 import { getEmails } from '@/server/functions/mail'
+import { getUpcomingEvents } from '@/server/functions/agenda'
 import { PriorityBadge } from '@/components/tasks/priority-badge'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
-    const [tasks, emails] = await Promise.all([
+    const [tasks, emails, events] = await Promise.all([
       getTasks({ data: { status: 'open' } }),
       getEmails({ data: { classification: 'all' } }),
+      getUpcomingEvents({ data: { days: 90 } }),
     ])
-    return { tasks, emails }
+    return { tasks, emails, events }
   },
   component: DashboardPage,
 })
 
 function DashboardPage() {
-  const { tasks, emails } = Route.useLoaderData()
+  const { tasks, emails, events } = Route.useLoaderData()
   const router = useRouter()
   const [quickTask, setQuickTask] = useState('')
 
@@ -47,11 +49,7 @@ function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <TasksWidget tasks={tasks} />
         <MailWidget emails={emails} />
-
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h3 className="font-semibold mb-2">Agenda</h3>
-          <p className="text-sm text-muted-foreground">No upcoming events.</p>
-        </div>
+        <AgendaWidget events={events} />
       </div>
     </div>
   )
@@ -120,6 +118,47 @@ function MailWidget({ emails }: { emails: Awaited<ReturnType<typeof getEmails>> 
           ))}
           {emails.length > 5 && (
             <p className="text-xs text-muted-foreground">+{emails.length - 5} more</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AgendaWidget({ events }: { events: Awaited<ReturnType<typeof getUpcomingEvents>> }) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold">Agenda</h3>
+        <Link to="/agenda" className="text-xs text-muted-foreground hover:text-foreground">
+          View all &rarr;
+        </Link>
+      </div>
+      {events.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No upcoming events.</p>
+      ) : (
+        <div className="space-y-2">
+          {events.slice(0, 5).map((event) => {
+            const start = new Date(event.startTime)
+            return (
+              <div
+                key={event.id}
+                className="flex items-center gap-2 text-sm px-2 py-1 -mx-2"
+              >
+                <span className="text-xs text-muted-foreground w-16 shrink-0">
+                  {start.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })}
+                </span>
+                <span className="truncate">{event.title}</span>
+                {!event.isAllDay && (
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {start.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+              </div>
+            )
+          })}
+          {events.length > 5 && (
+            <p className="text-xs text-muted-foreground">+{events.length - 5} more</p>
           )}
         </div>
       )}

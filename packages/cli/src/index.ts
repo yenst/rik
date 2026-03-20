@@ -7,11 +7,8 @@ const args = process.argv.slice(2)
 if (args.length > 0 && args[0] !== 'chat') {
   const message = args.join(' ')
   try {
-    const { reply, actions } = await sendMessage(message)
+    const { reply } = await sendMessage(message)
     console.log(reply)
-    for (const action of actions) {
-      console.log(`  [${action.tool}] ${JSON.stringify(action.args)}`)
-    }
   } catch (err) {
     console.error('Failed to reach Rik:', (err as Error).message)
     process.exit(1)
@@ -40,13 +37,9 @@ rl.on('line', async (line) => {
   }
 
   try {
-    const { reply, conversationId: convId, actions } = await sendMessage(message, conversationId)
+    const { reply, conversationId: convId } = await sendMessage(message, conversationId)
     conversationId = convId
-    console.log(`\n${reply}`)
-    for (const action of actions) {
-      console.log(`  [${action.tool}] ${JSON.stringify(action.args)}`)
-    }
-    console.log()
+    console.log(`\n${reply}\n`)
   } catch (err) {
     console.error('Error:', (err as Error).message)
   }

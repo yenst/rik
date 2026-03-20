@@ -39,6 +39,7 @@ function RootComponent() {
             <NavLink to="/tasks" label="Tasks" />
             <NavLink to="/mail" label="Mail" />
             <NavLink to="/invoices" label="Invoices" />
+            <NavLink to="/agenda" label="Agenda" />
           </nav>
           <div className="p-3 border-t border-border">
             <kbd className="text-xs text-muted-foreground">⌘K</kbd>
