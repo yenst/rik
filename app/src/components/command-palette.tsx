@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from '@tanstack/react-router'
-import { useHotkey } from '@tanstack/react-hotkeys'
+import { useHotkeys } from '@/lib/hotkeys'
 import {
   CommandDialog,
   CommandEmpty,
@@ -16,19 +16,18 @@ const navItems = [
   { label: 'Tasks', to: '/tasks' },
   { label: 'Mail', to: '/mail' },
   { label: 'Invoices', to: '/invoices' },
+  { label: 'Agenda', to: '/agenda' },
 ]
 
 export function CommandPalette() {
-  const [open, setOpen] = useState(false)
+  const { commandPaletteOpen, setCommandPaletteOpen } = useHotkeys()
   const [query, setQuery] = useState('')
   const router = useRouter()
 
-  useHotkey('Mod+K', () => setOpen((prev) => !prev))
-
   const close = useCallback(() => {
-    setOpen(false)
+    setCommandPaletteOpen(false)
     setQuery('')
-  }, [])
+  }, [setCommandPaletteOpen])
 
   const navigate = useCallback(
     (to: string) => {
@@ -49,7 +48,7 @@ export function CommandPalette() {
   }, [query, router, close])
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
       <CommandInput
         placeholder="Type a command or search..."
         value={query}

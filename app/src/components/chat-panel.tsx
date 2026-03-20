@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from '@tanstack/react-router'
+import { useHotkeys } from '@/lib/hotkeys'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -9,17 +10,22 @@ interface ChatMessage {
 }
 
 export function ChatPanel() {
-  const [open, setOpen] = useState(false)
+  const { chatOpen, setChatOpen } = useHotkeys()
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(false)
   const [conversationId, setConversationId] = useState<string | undefined>()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [messages])
+
+  useEffect(() => {
+    if (chatOpen) inputRef.current?.focus()
+  }, [chatOpen])
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,12 +45,8 @@ export function ChatPanel() {
       const data = await res.json()
 
       setConversationId(data.conversationId)
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.reply,
-      }])
+      setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
 
-      // Invalidate router to refresh data if tools modified anything
       if (data.actions?.length > 0) {
         router.invalidate()
       }
@@ -55,58 +57,60 @@ export function ChatPanel() {
     }
   }
 
-  if (!open) {
-    return (
-      <button
-        className="fixed bottom-4 right-4 bg-primary text-primary-foreground rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:opacity-90 transition-opacity"
-        onClick={() => setOpen(true)}
-      >
-        R
-      </button>
-    )
-  }
-
   return (
-    <div className="fixed bottom-4 right-4 w-96 h-[500px] bg-card border border-border rounded-lg shadow-xl flex flex-col">
-      <div className="flex items-center justify-between p-3 border-b border-border">
-        <span className="text-sm font-medium">Chat with Rik</span>
-        <button
-          className="text-xs text-muted-foreground hover:text-foreground"
-          onClick={() => setOpen(false)}
-        >
-          close
-        </button>
-      </div>
-
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
-        {messages.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            Ask Rik anything — create tasks, search emails, check invoices...
-          </p>
-        )}
-        {messages.map((msg, i) => (
-          <MessageBubble key={i} message={msg} />
-        ))}
-        {loading && (
-          <div className="text-sm text-muted-foreground">Thinking...</div>
-        )}
-      </div>
-
-      <form onSubmit={handleSend} className="p-3 border-t border-border">
-        <div className="flex gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Message Rik..."
-            disabled={loading}
-            autoFocus
-          />
-          <Button type="submit" disabled={loading || !input.trim()} size="sm">
-            Send
+    <>
+      {chatOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 z-40"
+          onClick={() => setChatOpen(false)}
+        />
+      )}
+      <div className={`fixed top-0 right-0 h-full w-[400px] bg-card border-l border-border shadow-xl z-50 flex flex-col transition-transform duration-200 ${chatOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div>
+            <h3 className="text-sm font-semibold">Chat with Rik</h3>
+            <p className="text-xs text-muted-foreground font-mono">Mod+J to toggle</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setChatOpen(false)}>
+            Close
           </Button>
         </div>
-      </form>
-    </div>
+
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+          {messages.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-12">
+              Ask Rik anything — create tasks, search emails, check invoices...
+            </p>
+          )}
+          {messages.map((msg, i) => (
+            <MessageBubble key={i} message={msg} />
+          ))}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="bg-muted rounded-lg px-3 py-2 text-sm text-muted-foreground font-mono">
+                thinking...
+              </div>
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleSend} className="p-4 border-t border-border">
+          <div className="flex gap-2">
+            <Input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Message Rik..."
+              disabled={loading}
+              className="font-mono text-sm"
+            />
+            <Button type="submit" disabled={loading || !input.trim()} size="sm">
+              Send
+            </Button>
+          </div>
+        </form>
+      </div>
+    </>
   )
 }
 
@@ -115,7 +119,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+      <div className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
         isUser
           ? 'bg-primary text-primary-foreground'
           : 'bg-muted text-foreground'
