@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { getInvoices, markInvoicePaid } from '@/server/functions/invoices'
 import type { Invoice, InvoiceStatus } from '@/server/functions/invoices'
 import { Badge } from '@/components/ui/badge'

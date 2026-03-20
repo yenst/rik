@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { getEmails, markAsRead } from '@/server/functions/mail'
 import type { Email } from '@/server/functions/mail'
 import { Badge } from '@/components/ui/badge'

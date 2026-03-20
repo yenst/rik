@@ -1,16 +1,15 @@
 {
   "name": "rik",
-  "module": "index.ts",
   "type": "module",
   "private": true,
-  "devDependencies": {
-    "@types/bun": "latest",
-    "@types/pdf-parse": "^1.1.5"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "dependencies": {
-    "pdf-parse": "^2.4.5"
+  "scripts": {
+    "dev": "bun run --cwd app dev",
+    "worker": "bun run --env-file=.env app/worker/index.ts",
+    "infra": "docker compose up redis minio -d",
+    "infra:all": "docker compose up -d",
+    "infra:stop": "docker compose down",
+    "db:generate": "bun run --cwd app db:generate",
+    "db:migrate": "bun run --cwd app db:migrate",
+    "db:studio": "bun run --cwd app db:studio"
   }
 }

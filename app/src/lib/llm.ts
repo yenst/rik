@@ -1,3 +1,4 @@
+import './env'
 import OpenAI from 'openai'
 
 const llm = new OpenAI({
@@ -5,12 +6,14 @@ const llm = new OpenAI({
   apiKey: process.env.LLM_API_KEY || 'ollama',
 })
 
-export async function complete(prompt: string, options?: {
+interface CompleteOptions {
   model?: string
   temperature?: number
   maxTokens?: number
   jsonMode?: boolean
-}) {
+}
+
+export async function complete(prompt: string, options?: CompleteOptions) {
   const response = await llm.chat.completions.create({
     model: options?.model || process.env.LLM_MODEL || 'llama3.1:8b',
     messages: [{ role: 'user', content: prompt }],

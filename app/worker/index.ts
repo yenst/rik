@@ -10,23 +10,28 @@ const connection = {
   port: parseInt(process.env.REDIS_PORT || '6379'),
 }
 
-// Workers
-new Worker('mail', processMailJob, { connection, concurrency: 2 })
-new Worker('invoice', extractInvoiceJob, { connection, concurrency: 1 })
-new Worker('llm', llmTaskJob, { connection, concurrency: 1 })
-new Worker('sync-mail', syncMailJob, { connection, concurrency: 1 })
-new Worker('agenda', syncAgendaJob, { connection, concurrency: 1 })
+const workers = {
+  mail: new Worker('mail', processMailJob, { connection, concurrency: 2 }),
+  invoice: new Worker('invoice', extractInvoiceJob, { connection, concurrency: 1 }),
+  llm: new Worker('llm', llmTaskJob, { connection, concurrency: 1 }),
+  'sync-mail': new Worker('sync-mail', syncMailJob, { connection, concurrency: 1 }),
+  agenda: new Worker('agenda', syncAgendaJob, { connection, concurrency: 1 }),
+}
 
-// Schedule repeating jobs
+for (const [name, worker] of Object.entries(workers)) {
+  worker.on('failed', (job, err) => console.error(`[${name}] Job ${job?.name} failed:`, err.message))
+}
+
 const syncMailQueue = new Queue('sync-mail', { connection })
 
 async function scheduleRepeatingJobs() {
+  const pollInterval = parseInt(process.env.IMAP_POLL_INTERVAL || '300000')
   await syncMailQueue.upsertJobScheduler(
     'sync-mail-poll',
-    { every: parseInt(process.env.IMAP_POLL_INTERVAL || '300000') }, // default 5 min
+    { every: pollInterval },
     { data: {} },
   )
-  console.log('Rik workers started (IMAP poll every ' + (parseInt(process.env.IMAP_POLL_INTERVAL || '300000') / 1000) + 's)')
+  console.log(`Rik workers started`)
 }
 
 scheduleRepeatingJobs().catch(console.error)

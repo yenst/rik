@@ -18,7 +18,7 @@ const VALID_CLASSIFICATIONS = ['invoice', 'actionable', 'newsletter', 'personal'
 const CLASSIFICATION_PROMPT = `Classify the following email into exactly one category.
 
 Categories:
-- invoice: Contains a bill, invoice, or payment request
+- invoice: Contains a bill, invoice, or payment request, or has invoice/receipt attachments
 - actionable: Requires a response or action from the recipient
 - newsletter: Marketing email, digest, or subscription content
 - personal: Personal communication from a known contact
@@ -28,6 +28,7 @@ Categories:
 Email:
 From: {from}
 Subject: {subject}
+Attachments: {attachments}
 Body: {body}
 
 Respond with only the category name, nothing else.`
@@ -57,11 +58,25 @@ export async function processMailJob(job: Job<ProcessMailData>) {
     .returning()
 
   if (!email) throw new Error('Failed to insert email')
-  console.log(`[process-mail] Stored: ${subject}`)
 
-  // Store attachments in MinIO
-  for (const attachment of parsed.attachments || []) {
-    const key = `${email.id}/${nanoid()}-${attachment.filename || 'unnamed'}`
+  await storeAttachments(email.id, parsed.attachments || [])
+
+  const attachmentNames = (parsed.attachments || []).map((a) => a.filename || 'unnamed').join(', ')
+  const classification = await classifyEmail(from, subject, bodyPreview, attachmentNames)
+
+  await db
+    .update(emails)
+    .set({ classification, processedAt: new Date().toISOString() })
+    .where(eq(emails.id, email.id))
+
+  console.log(`[process-mail] ${subject} -> ${classification}`)
+
+  await enqueueInvoiceExtractionIfNeeded(email.id, classification, parsed.attachments || [])
+}
+
+async function storeAttachments(emailId: string, attachments: Awaited<ReturnType<typeof simpleParser>>['attachments']) {
+  for (const attachment of attachments) {
+    const key = `${emailId}/${nanoid()}-${attachment.filename || 'unnamed'}`
     await uploadFile(
       'attachments',
       key,
@@ -69,60 +84,52 @@ export async function processMailJob(job: Job<ProcessMailData>) {
       attachment.contentType || 'application/octet-stream',
     )
     await db.insert(emailAttachments).values({
-      emailId: email.id,
+      emailId,
       filename: attachment.filename || 'unnamed',
       mimeType: attachment.contentType || 'application/octet-stream',
       size: attachment.size || attachment.content.length,
       minioKey: key,
     })
-    console.log(`[process-mail] Attachment: ${attachment.filename}`)
   }
+}
 
-  // Classify via LLM
-  const classification = await classifyEmail(from, subject, bodyPreview)
-
-  await db
-    .update(emails)
-    .set({ classification, processedAt: new Date().toISOString() })
-    .where(eq(emails.id, email.id))
-
-  console.log(`[process-mail] Classified: ${classification}`)
-
-  // If invoice with PDF attachment, enqueue extraction
+async function enqueueInvoiceExtractionIfNeeded(
+  emailId: string,
+  classification: string,
+  attachments: Awaited<ReturnType<typeof simpleParser>>['attachments'],
+) {
   if (classification !== 'invoice') return
 
-  const pdfAttachment = (parsed.attachments || []).find(
-    (a) => a.contentType === 'application/pdf',
-  )
-  if (!pdfAttachment) return
+  const hasPdf = attachments.some((a) => a.contentType === 'application/pdf')
+  if (!hasPdf) return
 
   const attachmentRecord = await db.query.emailAttachments.findFirst({
     where: and(
-      eq(emailAttachments.emailId, email.id),
+      eq(emailAttachments.emailId, emailId),
       eq(emailAttachments.mimeType, 'application/pdf'),
     ),
   })
   if (!attachmentRecord) return
 
   await invoiceQueue.add('extract-invoice', {
-    emailId: email.id,
+    emailId,
     attachmentKey: attachmentRecord.minioKey,
   })
-  console.log(`[process-mail] Enqueued invoice extraction`)
 }
 
-async function classifyEmail(from: string, subject: string, body: string) {
+async function classifyEmail(from: string, subject: string, body: string, attachments: string) {
   try {
     const prompt = CLASSIFICATION_PROMPT
       .replace('{from}', from)
       .replace('{subject}', subject)
+      .replace('{attachments}', attachments || 'none')
       .replace('{body}', body)
 
     const result = await complete(prompt)
     const normalized = result.trim().toLowerCase()
     return VALID_CLASSIFICATIONS.find((v) => normalized.includes(v)) || 'other'
   } catch (err) {
-    console.error(`[process-mail] LLM classification failed:`, err)
+    console.error('[process-mail] Classification failed:', err)
     return 'other' as const
   }
 }

@@ -1,4 +1,5 @@
 import type { Job } from 'bullmq'
+import { complete } from '../../src/lib/llm'
 
 export interface LlmTaskData {
   prompt: string
@@ -7,6 +8,7 @@ export interface LlmTaskData {
 }
 
 export async function llmTaskJob(job: Job<LlmTaskData>) {
-  console.log(`[llm-task] Running LLM task: ${job.data.prompt.slice(0, 50)}...`)
-  // TODO Phase 5: call Ollama/OpenAI-compatible API, return result
+  const { prompt, context, model } = job.data
+  const fullPrompt = context ? `${context}\n\n${prompt}` : prompt
+  return complete(fullPrompt, { model })
 }
